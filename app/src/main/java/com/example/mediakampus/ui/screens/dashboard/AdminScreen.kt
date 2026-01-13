@@ -33,16 +33,15 @@ fun AdminScreen(
     var selectedReqForStatus by remember { mutableStateOf<Request?>(null) }
     var selectedReqForAssign by remember { mutableStateOf<Request?>(null) }
 
+    // PEMANGGILAN DATA PENTING
     LaunchedEffect(Unit) {
-        viewModel.loadData()
-        viewModel.loadAllUsers()
+        viewModel.loadData()     // Load Requests
+        viewModel.loadAllUsers() // Load Users
     }
 
-    LaunchedEffect(message) {
-        message?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-            viewModel.clearMessage()
-        }
+    if (message != null) {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        viewModel.clearMessage()
     }
 
     Scaffold(
@@ -62,16 +61,22 @@ fun AdminScreen(
             if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
 
             if (selectedTab == 0) {
-                LazyColumn(modifier = Modifier.padding(16.dp)) {
-                    items(requests) { req ->
-                        AdminRequestItem(
-                            req = req,
-                            onStatusClick = { selectedReqForStatus = req },
-                            onAssignClick = { selectedReqForAssign = req }
-                        )
+                // LIST REQUEST
+                if (requests.isEmpty() && !isLoading) {
+                    Text("Belum ada request masuk.", modifier = Modifier.padding(16.dp))
+                } else {
+                    LazyColumn(modifier = Modifier.padding(16.dp)) {
+                        items(requests) { req ->
+                            AdminRequestItem(
+                                req = req,
+                                onStatusClick = { selectedReqForStatus = req },
+                                onAssignClick = { selectedReqForAssign = req }
+                            )
+                        }
                     }
                 }
             } else {
+                // USER MANAGEMENT (Kode UserManagementContent Anda yang sudah benar)
                 UserManagementContent(
                     users = allUsers,
                     onCreateUser = { n, e, p, r -> viewModel.createUser(n, e, p, r) },
@@ -80,8 +85,7 @@ fun AdminScreen(
             }
         }
     }
-
-    // Dialog Status
+    // Pastikan kode Dialog StatusDialog dan AssignDialog ada di file ini di bawah sini.
     if (selectedReqForStatus != null) {
         StatusDialog(
             req = selectedReqForStatus!!,
@@ -93,7 +97,6 @@ fun AdminScreen(
         )
     }
 
-    // Dialog Assign
     if (selectedReqForAssign != null) {
         AssignDialog(
             req = selectedReqForAssign!!,

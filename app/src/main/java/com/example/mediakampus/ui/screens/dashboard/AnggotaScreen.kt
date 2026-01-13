@@ -12,13 +12,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mediakampus.data.model.Assignment
-import com.example.mediakampus.data.model.WorkResult
 import com.example.mediakampus.ui.AppViewModelProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnggotaScreen(
     onLogout: () -> Unit,
+    // Tambahkan profileViewModel jika ingin fitur edit profil
     viewModel: AnggotaViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val assignments by viewModel.assignments.collectAsState()
@@ -30,6 +30,7 @@ fun AnggotaScreen(
     var tabIndex by remember { mutableIntStateOf(0) }
     var selectedAssignment by remember { mutableStateOf<Assignment?>(null) }
 
+    // PEMANGGILAN DATA PENTING
     LaunchedEffect(Unit) {
         viewModel.loadData()
     }
@@ -46,7 +47,7 @@ fun AnggotaScreen(
                     Button(onClick = onLogout) { Text("Logout") }
                 })
                 TabRow(selectedTabIndex = tabIndex) {
-                    Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 }, text = { Text("Tugas") })
+                    Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 }, text = { Text("Tugas Saya") })
                     Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 }, text = { Text("Riwayat") })
                 }
             }
@@ -56,28 +57,34 @@ fun AnggotaScreen(
             if (isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
 
             if (tabIndex == 0) {
-                LazyColumn(modifier = Modifier.padding(16.dp)) {
-                    items(assignments) { asg ->
-                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(asg.request.title, style = MaterialTheme.typography.titleMedium)
-                                Text("Waktu: ${asg.request.eventTime}")
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(onClick = { selectedAssignment = asg }) {
-                                    Text("Submit Hasil")
+                // LIST TUGAS (ASSIGNMENTS)
+                if (assignments.isEmpty() && !isLoading) {
+                    Text("Tidak ada tugas saat ini.", modifier = Modifier.padding(16.dp))
+                } else {
+                    LazyColumn(modifier = Modifier.padding(16.dp)) {
+                        items(assignments) { asg ->
+                            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(asg.request.title, style = MaterialTheme.typography.titleMedium)
+                                    Text("Waktu: ${asg.request.eventTime}")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Button(onClick = { selectedAssignment = asg }) {
+                                        Text("Kumpul Hasil")
+                                    }
                                 }
                             }
                         }
                     }
                 }
             } else {
+                // LIST RIWAYAT
                 LazyColumn(modifier = Modifier.padding(16.dp)) {
                     items(history) { res ->
                         Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                             Column(modifier = Modifier.padding(12.dp)) {
-                                Text("Tugas: ${res.assignment?.request?.title ?: "N/A"}", style = MaterialTheme.typography.titleSmall)
+                                Text("Tugas: ${res.assignment?.request?.title ?: "N/A"}")
                                 Text("Link: ${res.fileUrl}", color = Color.Blue)
-                                Text("Catatan: ${res.notes ?: "-"}")
+                                Text("Status: Terkirim")
                             }
                         }
                     }
@@ -98,6 +105,7 @@ fun AnggotaScreen(
     }
 }
 
+// ... (fungsi SubmitWorkDialog tetap sama seperti sebelumnya)
 @Composable
 fun SubmitWorkDialog(assignment: Assignment, onDismiss: () -> Unit, onSubmit: (String, String) -> Unit) {
     var url by remember { mutableStateOf("") }

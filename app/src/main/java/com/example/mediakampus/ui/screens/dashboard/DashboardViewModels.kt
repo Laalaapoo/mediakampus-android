@@ -44,7 +44,7 @@ class PemohonViewModel(private val repository: MediaKampusRepository) : ViewMode
     fun clearMessage() { _message.value = null }
 }
 
-// --- ANGGOTA ---
+// --- ANGGOTA VIEW MODEL ---
 class AnggotaViewModel(private val repository: MediaKampusRepository) : ViewModel() {
     private val _assignments = MutableStateFlow<List<Assignment>>(emptyList())
     val assignments = _assignments.asStateFlow()
@@ -53,7 +53,7 @@ class AnggotaViewModel(private val repository: MediaKampusRepository) : ViewMode
     val history = _history.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
-    val isLoading = _isLoading.asStateFlow() // Akses publik tanpa "_"
+    val isLoading = _isLoading.asStateFlow()
 
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
@@ -61,8 +61,19 @@ class AnggotaViewModel(private val repository: MediaKampusRepository) : ViewMode
     fun loadData() {
         viewModelScope.launch {
             _isLoading.value = true
-            repository.getAssignments().onSuccess { _assignments.value = it }
-            repository.getMyResults().onSuccess { _history.value = it }
+            // Load Tugas
+            repository.getAssignments()
+                .onSuccess {
+                    _assignments.value = it
+                    if (it.isEmpty()) _message.value = "Belum ada tugas baru"
+                }
+                .onFailure { _message.value = "Gagal memuat tugas: ${it.message}" }
+
+            // Load Riwayat
+            repository.getMyResults()
+                .onSuccess { _history.value = it }
+                .onFailure { _message.value = "Gagal memuat riwayat: ${it.message}" }
+
             _isLoading.value = false
         }
     }
@@ -70,17 +81,19 @@ class AnggotaViewModel(private val repository: MediaKampusRepository) : ViewMode
     fun submitWork(assignmentId: Long, url: String, notes: String) {
         viewModelScope.launch {
             _isLoading.value = true
-            repository.submitResult(WorkResultCreateDto(assignmentId, url, notes)).onSuccess {
-                _message.value = "Berhasil mengirim!"
-                loadData()
-            }
+            repository.submitResult(WorkResultCreateDto(assignmentId, url, notes))
+                .onSuccess {
+                    _message.value = "Berhasil mengirim hasil!"
+                    loadData() // Refresh data setelah submit
+                }
+                .onFailure { _message.value = "Gagal kirim: ${it.message}" }
             _isLoading.value = false
         }
     }
     fun clearMessage() { _message.value = null }
 }
 
-// --- ADMIN ---
+// --- ADMIN VIEW MODEL ---
 class AdminViewModel(private val repository: MediaKampusRepository) : ViewModel() {
     private val _requests = MutableStateFlow<List<Request>>(emptyList())
     val requests = _requests.asStateFlow()
@@ -100,7 +113,15 @@ class AdminViewModel(private val repository: MediaKampusRepository) : ViewModel(
     fun loadData() {
         viewModelScope.launch {
             _isLoading.value = true
-            repository.getAllRequests().onSuccess { _requests.value = it }
+            // Load Request
+            repository.getAllRequests()
+                .onSuccess {
+                    _requests.value = it
+                    if (it.isEmpty()) _message.value = "Belum ada request masuk"
+                }
+                .onFailure { _message.value = "Gagal load request: ${it.message}" }
+
+            // Load Anggota untuk Dropdown
             repository.getUsers("ANGGOTA").onSuccess { _members.value = it }
             _isLoading.value = false
         }
@@ -109,32 +130,53 @@ class AdminViewModel(private val repository: MediaKampusRepository) : ViewModel(
     fun loadAllUsers() {
         viewModelScope.launch {
             _isLoading.value = true
-            repository.getUsers(null).onSuccess { _allUsers.value = it }
+            repository.getUsers(null)
+                .onSuccess { _allUsers.value = it }
+                .onFailure { _message.value = "Gagal load user: ${it.message}" }
             _isLoading.value = false
         }
     }
 
-    fun toggleUserActive(userId: Long, currentActive: Boolean) {
+    fun toggleUserActive(userId: Long, currentStatus: Boolean) {
         viewModelScope.launch {
-            repository.updateUserStatus(userId, !currentActive).onSuccess { loadAllUsers() }
+            repository.updateUserStatus(userId, !currentStatus)
+                .onSuccess { loadAllUsers() }
+                .onFailure { _message.value = "Gagal update status: ${it.message}" }
         }
     }
 
     fun createUser(n: String, e: String, p: String, r: String) {
         viewModelScope.launch {
-            repository.createUser(AdminUserCreateDto(n, e, p, r)).onSuccess { loadAllUsers() }
+            _isLoading.value = true
+            repository.createUser(AdminUserCreateDto(n, e, p, r))
+                .onSuccess {
+                    _message.value = "User $n berhasil dibuat"
+                    loadAllUsers()
+                }
+                .onFailure { _message.value = "Gagal buat user: ${it.message}" }
+            _isLoading.value = false
         }
     }
 
     fun updateStatus(id: Long, status: String, reason: String?) {
         viewModelScope.launch {
-            repository.updateRequestStatus(id, RequestStatusUpdateDto(status, reason)).onSuccess { loadData() }
+            repository.updateRequestStatus(id, RequestStatusUpdateDto(status, reason))
+                .onSuccess {
+                    _message.value = "Status diupdate!"
+                    loadData()
+                }
+                .onFailure { _message.value = "Gagal: ${it.message}" }
         }
     }
 
     fun assignMember(reqId: Long, userId: Long) {
         viewModelScope.launch {
-            repository.assignMember(AssignmentCreateDto(reqId, userId)).onSuccess { loadData() }
+            repository.assignMember(AssignmentCreateDto(reqId, userId))
+                .onSuccess {
+                    _message.value = "Anggota ditugaskan!"
+                    loadData()
+                }
+                .onFailure { _message.value = "Gagal assign: ${it.message}" }
         }
     }
     fun clearMessage() { _message.value = null }
